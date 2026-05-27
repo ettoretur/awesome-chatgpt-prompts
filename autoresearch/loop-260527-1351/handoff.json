@@ -1,0 +1,15 @@
+{
+  "version": "2.1.0",
+  "source": "loop",
+  "timestamp": "2026-05-27T13:54:30Z",
+  "status": "BOUNDED",
+  "results_tsv": "autoresearch/loop-260527-1351/loop-results.tsv",
+  "findings": [],
+  "config": {
+    "goal": "Aumentare la varietà dei prompt aggiungendo nuovi ruoli/categorie unici",
+    "scope": "prompts.csv",
+    "metric": "Numero di valori act unici nel CSV",
+    "direction": "higher_is_better",
+    "verify": "cut -d'\"' -f2 prompts.csv | tail -n +2 | sort -u | wc -l | tr -d ' '"
+  }
+}
