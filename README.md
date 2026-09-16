@@ -62,6 +62,10 @@ I've authored an e-book called **"How to Make Money with ChatGPT: Strategies, Ti
 
 ## Other Prompting Resources
 
+### Looking for Claude Skills?
+
+Check out [Claude Skills Collection](https://github.com/abubakarsiddik31/claude-skills-collection), a curated collection of official and community-built Claude Skills — modular tools that extend Claude with practical workflows for coding, debugging, planning, writing, research, design, and automation.
+
 ### Want to Learn How to write image prompts for Midjourney AI?
 
 I've authored an e-book called **"The Art of Midjourney AI: A Guide to Creating Images from Text"**.
