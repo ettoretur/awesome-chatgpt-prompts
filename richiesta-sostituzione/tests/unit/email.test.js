@@ -25,6 +25,12 @@ test('mailto con destinatario e dati essenziali', () => {
   const b = body(m);
   for (const s of ['Marco Rossi', '60 N', 'Schema 1', 'Non mantiene la forza', 'Allegati da inserire']) assert.ok(b.includes(s), s);
 });
+test('date in formato gg/mm/aaaa', () => {
+  const b = body(mail());
+  assert.ok(b.includes('del 01/06/2025'), b);
+  assert.ok(b.includes('in garanzia fino al 01/06/2027'), b);
+  assert.ok(body(mail({ docData: '2023-01-01' })).includes('scaduta il 01/01/2025'));
+});
 test('caratteri speciali arrivano intatti', () => {
   const nota = 'Perde gas & si chiude # 100% più "lenta"\nseconda riga + terza';
   const m = mail({ motivoNote: nota });
