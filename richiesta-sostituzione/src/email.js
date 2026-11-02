@@ -6,7 +6,7 @@ function costruisciEmail(dati, garanzia, codice, catalogo) {
   const schema = (catalogo.schemiForatura.find((s) => s.chiave === dati.schemaForatura) || {}).etichetta || dati.schemaForatura;
   const fuori = garanzia.stato === 'fuori_garanzia';
   const esito = garanzia.stato === 'in_garanzia' ? `in garanzia fino al ${garanzia.scadenzaISO}`
-    : fuori ? `FUORI GARANZIA dal ${garanzia.scadenzaISO} (da valutare)` : 'data non valida';
+    : fuori ? `FUORI GARANZIA, scaduta il ${garanzia.scadenzaISO} (da valutare)` : 'data non valida';
   const oggetto = `Richiesta sostituzione aste [${codice}] — ${dati.modello}, ${dati.forzaN} N` + (fuori ? ' — DA VALUTARE' : '');
 
   const corpo = (note) => [

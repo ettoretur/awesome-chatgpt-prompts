@@ -4,9 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Richiesta sostituzione aste a gas</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--muted:#5b6675;--line:#d3d9e1;--accent:#0b5cad;--accent-ink:#fff;--ok:#1d7a3c;--warn:#a8590a;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1b222b;--ink:#e8edf3;--muted:#a3afbf;--line:#37424f;--accent:#6aa9ee;--accent-ink:#0a1420;--ok:#5fd18a;--warn:#f0a35a;--err:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+header{margin-bottom:12px}h1{font-size:1.5rem;margin:.2em 0}h2{font-size:1.2rem;margin:0 0 .8em}h2:focus{outline:none}
+.marchio{margin:0;font-weight:700;color:var(--accent);letter-spacing:.02em}
+form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.progresso{display:flex;gap:4px;list-style:none;padding:0;margin:0 0 12px;font-size:.78rem;color:var(--muted);overflow:hidden}
+.progresso li{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progresso span{display:inline-block;width:1.5em;height:1.5em;line-height:1.5em;text-align:center;border-radius:50%;border:1px solid var(--line)}
+.progresso li[aria-current] {color:var(--ink);font-weight:700}.progresso li[aria-current] span,.progresso li.fatto span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+section[hidden],[hidden]{display:none!important}
+.campo{margin-bottom:14px}label{display:block;font-weight:600;margin-bottom:4px}
+input[type=text],input[type=email],input[type=tel],input[type=date],input[type=number],select,textarea{width:100%;padding:10px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+input[type=checkbox],input[type=radio]{width:1.15em;height:1.15em;margin-right:8px;vertical-align:middle}
+.spunta label{font-weight:400}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[aria-invalid=true]{border-color:var(--err)}
+.errore{color:var(--err);font-size:.9rem;margin:.3em 0 0}.errore:empty{display:none}
+.aiuto,.nota{color:var(--muted);font-size:.9rem;margin:.3em 0}
+.badge{margin:0;padding:8px 12px;border-radius:8px;font-weight:600}.badge:empty{display:none}.badge.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}.badge.attenzione{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+fieldset{border:0;padding:0;margin:0 0 14px}legend{font-weight:600;margin-bottom:6px;padding:0}
+.schede{display:grid;gap:8px}.scheda{display:flex;align-items:center;gap:12px;font-weight:400;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.scheda:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.scheda svg{flex:none}.pannello{fill:none;stroke:var(--muted);stroke-width:2}.scheda circle{fill:var(--accent)}
+.scheda small{display:block;color:var(--muted)}
+details{margin-top:4px}summary{cursor:pointer;color:var(--accent)}
+.checklist{color:var(--muted);padding-left:1.2em}
+.avvisi{color:var(--warn);padding-left:1.2em}.avvisi:empty{display:none}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font:.85rem/1.5 ui-monospace,monospace}
+.azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;margin-top:16px}
+[data-gruppo=uscita]{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--line);cursor:pointer;min-height:44px}
+.primario{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.secondario{background:var(--card);color:var(--ink)}
+</style>
 </head>
 <body>
-<main id="app"><h1>Richiesta di sostituzione aste a gas</h1></main>
+<main id="app"></main>
 <script>
 // Dati di prodotto. Tutto ciò che è marcato TODO-SEGNAPOSTO va sostituito con i valori reali.
 const CATALOGO = {
@@ -80,6 +117,329 @@ const TESTI = {
   copiaFallita: 'Copia non riuscita: seleziona il testo e copialo a mano.'
 };
 if (typeof module !== 'undefined') module.exports = { TESTI };
+
+</script>
+<script>
+// Logica pura: garanzia, validazione, codice pratica, bozza. Nessun accesso al DOM.
+const _T = typeof TESTI !== 'undefined' ? TESTI : require('./testi.js').TESTI;
+
+const _dim = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate(); // m = 1..12
+const _pad = (n, l = 2) => String(n).padStart(l, '0');
+
+function _parseISO(s) {
+  const r = typeof s === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!r) return null;
+  const [y, m, d] = [Number(r[1]), Number(r[2]), Number(r[3])];
+  if (m < 1 || m > 12 || d < 1 || d > _dim(y, m)) return null;
+  return { y, m, d };
+}
+
+// Garanzia: data documento + `mesi`, ultimo giorno incluso. Se il giorno non esiste
+// nel mese di arrivo (es. 29 febbraio) si usa l'ultimo giorno di quel mese.
+function valutaGaranzia(docDataISO, oggiISO, mesi) {
+  const p = _parseISO(docDataISO);
+  if (!p || !_parseISO(oggiISO) || docDataISO > oggiISO) return { stato: 'data_non_valida', scadenzaISO: null };
+  const tot = p.y * 12 + (p.m - 1) + mesi;
+  const ny = Math.floor(tot / 12), nm = (tot % 12) + 1;
+  const nd = Math.min(p.d, _dim(ny, nm));
+  const scadenzaISO = `${_pad(ny, 4)}-${_pad(nm)}-${_pad(nd)}`;
+  return { stato: oggiISO <= scadenzaISO ? 'in_garanzia' : 'fuori_garanzia', scadenzaISO };
+}
+
+const _vuoto = (v) => v === undefined || v === null || String(v).trim() === '';
+
+function validaRichiesta(dati, catalogo, oggiISO) {
+  const errori = {}, avvisi = [];
+  const E = _T.errori;
+  for (const c of ['clienteNome', 'indirizzo', 'docTipo', 'docNumero', 'modello', 'apertura', 'dimensione', 'versione', 'schemaForatura', 'motivo']) {
+    if (_vuoto(dati[c])) errori[c] = E.obbligatorio;
+  }
+  if (_vuoto(dati.clienteEmail)) errori.clienteEmail = E.obbligatorio;
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(dati.clienteEmail).trim())) errori.clienteEmail = E.email;
+
+  const garanzia = valutaGaranzia(dati.docData, oggiISO, catalogo.garanziaMesi);
+  if (garanzia.stato === 'data_non_valida') errori.docData = _vuoto(dati.docData) ? E.obbligatorio : E.dataNonValida;
+  else if (garanzia.stato === 'fuori_garanzia') avvisi.push(_T.avvisi.fuoriGaranzia);
+
+  if (!/^\d+$/.test(String(dati.quantita).trim()) || Number(dati.quantita) < 1) errori.quantita = E.quantita;
+
+  const modello = catalogo.modelli[dati.modello];
+  const forza = String(dati.forzaN).trim();
+  if (_vuoto(dati.forzaN)) errori.forzaN = E.obbligatorio;
+  else if (modello) {
+    const ammesse = modello.forzeAmmesseN[dati.dimensione] || [];
+    if (!/^\d+$/.test(forza) || !ammesse.includes(Number(forza))) errori.forzaN = E.forza;
+  }
+  const schema = catalogo.schemiForatura.find((s) => s.chiave === dati.schemaForatura);
+  if (schema && dati.modello && !schema.modelli.includes(dati.modello)) avvisi.push(_T.avvisi.schema);
+
+  if (!dati.allegatiConfermati) errori.allegatiConfermati = E.allegati;
+  if (!dati.privacy) errori.privacy = E.privacy;
+  return { errori, avvisi, garanzia };
+}
+
+function generaCodice(oggi, rand) {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let suffisso = '';
+  for (let i = 0; i < 4; i++) suffisso += alfabeto[Math.min(31, Math.floor(rand() * 32))];
+  return `RS-${oggi.getFullYear()}${_pad(oggi.getMonth() + 1)}${_pad(oggi.getDate())}-${suffisso}`;
+}
+
+function formatoData(iso) {
+  const p = _parseISO(iso);
+  return p ? `${_pad(p.d)}/${_pad(p.m)}/${_pad(p.y, 4)}` : '';
+}
+
+const _CHIAVE_BOZZA = 'rs-bozza-v1';
+function salvaBozza(dati, storage) {
+  try { if (!storage) return false; storage.setItem(_CHIAVE_BOZZA, JSON.stringify(dati)); return true; } catch (e) { return false; }
+}
+function caricaBozza(storage) {
+  try {
+    if (!storage) return null;
+    const v = JSON.parse(storage.getItem(_CHIAVE_BOZZA));
+    return v && typeof v === 'object' ? v : null;
+  } catch (e) { return null; }
+}
+
+if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData };
+
+</script>
+<script>
+// Costruzione di oggetto, corpo e link mailto. Nessun accesso al DOM.
+const _LIMITE_MAILTO = 1800;
+
+function costruisciEmail(dati, garanzia, codice, catalogo) {
+  const motivo = (catalogo.motivi.find((m) => m.chiave === dati.motivo) || {}).etichetta || dati.motivo;
+  const schema = (catalogo.schemiForatura.find((s) => s.chiave === dati.schemaForatura) || {}).etichetta || dati.schemaForatura;
+  const fuori = garanzia.stato === 'fuori_garanzia';
+  const esito = garanzia.stato === 'in_garanzia' ? `in garanzia fino al ${garanzia.scadenzaISO}`
+    : fuori ? `FUORI GARANZIA, scaduta il ${garanzia.scadenzaISO} (da valutare)` : 'data non valida';
+  const oggetto = `Richiesta sostituzione aste [${codice}] — ${dati.modello}, ${dati.forzaN} N` + (fuori ? ' — DA VALUTARE' : '');
+
+  const corpo = (note) => [
+    `Richiesta di sostituzione ${codice}`, '',
+    `Cliente: ${dati.clienteNome}`, `Email: ${dati.clienteEmail}`, `Telefono: ${dati.clienteTelefono || '-'}`,
+    `Spedizione: ${dati.indirizzo}`, '',
+    `Documento: ${dati.docTipo} n. ${dati.docNumero} del ${dati.docData}`, `Garanzia: ${esito}`, '',
+    `Prodotto: ${dati.modello}, apertura ${dati.apertura}, dimensione ${dati.dimensione}, versione ${dati.versione}, quantità ${dati.quantita}`,
+    `Schema di foratura: ${schema}`, `Forza stampata sull'asta: ${dati.forzaN} N`, '',
+    `Motivo: ${motivo}`, `Note: ${note || '-'}`, '',
+    'Allegati da inserire: documento d\'acquisto e foto dell\'asta e del montaggio.'
+  ].join('\n');
+
+  const crea = (note) => {
+    const c = corpo(note);
+    return { c, url: `mailto:${catalogo.destinatario}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(c)}` };
+  };
+  const nota = String(dati.motivoNote || '');
+  const corpoCompleto = corpo(nota);
+  let r = crea(nota);
+  if (r.url.length > _LIMITE_MAILTO) {
+    let lo = 0, hi = nota.length; // ricerca del troncamento più lungo che entra nel limite
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (crea(nota.slice(0, mid) + '…').url.length <= _LIMITE_MAILTO) lo = mid; else hi = mid - 1;
+    }
+    r = crea(nota.slice(0, lo) + '…');
+  }
+  return { oggetto, corpoCompleto, corpoMailto: r.c, mailto: r.url };
+}
+
+if (typeof module !== 'undefined') module.exports = { costruisciEmail };
+
+</script>
+<script>
+// Interfaccia a passi. Dipende da: CATALOGO, TESTI, logica.js, email.js (globali nel file unico).
+const _CAMPI_PASSO = {
+  1: ['docTipo', 'docNumero', 'docData'],
+  2: ['modello', 'apertura', 'dimensione', 'versione', 'quantita'],
+  3: ['schemaForatura', 'forzaN'],
+  4: ['motivo'],
+  5: ['clienteNome', 'clienteEmail', 'indirizzo', 'allegatiConfermati', 'privacy']
+};
+const _SCHEMI_SVG = { S1: [[22, 18], [22, 62]], S2: [[18, 22], [18, 52]], S3: [[16, 14], [16, 40], [44, 40]] };
+
+function _esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _opzioni(valori, segnaposto) {
+  return `<option value="">${_esc(segnaposto)}</option>` + valori.map((v) => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('');
+}
+function _storageSicuro() { try { return window.sessionStorage; } catch (e) { return null; } }
+function _oggiISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function _svgSchema(chiave) {
+  const fori = (_SCHEMI_SVG[chiave] || _SCHEMI_SVG.S1).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4"/>`).join('');
+  return `<svg viewBox="0 0 80 80" width="80" height="80" aria-hidden="true" focusable="false"><rect x="4" y="4" width="72" height="72" rx="4" class="pannello"/>${fori}</svg>`;
+}
+
+function _campo(nome, etichetta, controllo, aiuto) {
+  return `<div class="campo"><label for="f-${nome}">${_esc(etichetta)}</label>${controllo}${aiuto ? `<p class="aiuto">${aiuto}</p>` : ''}<p class="errore" data-errore="${nome}" aria-live="polite"></p></div>`;
+}
+
+function _markup(catalogo, T) {
+  const nomiModelli = Object.keys(catalogo.modelli);
+  const schemi = catalogo.schemiForatura.map((s) => `<label class="scheda"><input type="radio" name="schemaForatura" value="${_esc(s.chiave)}">${_svgSchema(s.chiave)}<span><strong>${_esc(s.etichetta)}</strong><small>${_esc(s.descrizione)}</small></span></label>`).join('');
+  const motivi = '<option value="">Scegli il motivo…</option>' + catalogo.motivi.map((m) => `<option value="${_esc(m.chiave)}">${_esc(m.etichetta)}</option>`).join('');
+  return `
+<header><p class="marchio">Italiana Ferramenta</p><h1>${_esc(T.titolo)}</h1><p>${_esc(T.sottotitolo)}</p></header>
+<ol class="progresso" aria-label="Avanzamento">${T.passi.map((p, i) => `<li data-prog="${i + 1}"><span>${i + 1}</span> ${_esc(p)}</li>`).join('')}</ol>
+<form novalidate onsubmit="return false">
+<section data-step="1" aria-labelledby="t1"><h2 id="t1" tabindex="-1">1. Documento d'acquisto</h2>
+${_campo('docTipo', 'Tipo di documento', `<select id="f-docTipo" name="docTipo">${_opzioni(catalogo.documenti, 'Scegli…')}</select>`)}
+${_campo('docNumero', 'Numero del documento', '<input id="f-docNumero" name="docNumero" type="text" autocomplete="off">')}
+${_campo('docData', 'Data del documento', `<input id="f-docData" name="docData" type="date" max="${_oggiISO()}">`)}
+<p id="esito-garanzia" class="badge" aria-live="polite"></p></section>
+<section data-step="2" aria-labelledby="t2" hidden><h2 id="t2" tabindex="-1">2. Prodotto</h2>
+${_campo('modello', 'Modello', `<select id="f-modello" name="modello">${_opzioni(nomiModelli, 'Scegli il modello…')}</select>`)}
+${_campo('apertura', 'Senso di apertura', '<select id="f-apertura" name="apertura"><option value="">Scegli prima il modello</option></select>')}
+${_campo('dimensione', 'Dimensione', '<select id="f-dimensione" name="dimensione"><option value="">Scegli prima il modello</option></select>')}
+${_campo('versione', 'Versione', '<select id="f-versione" name="versione"><option value="">Scegli prima il modello</option></select>')}
+${_campo('quantita', 'Quantità da sostituire', '<input id="f-quantita" name="quantita" type="number" min="1" step="1" inputmode="numeric">')}
+<p class="nota">Per Compact e Kraby le staffe non sono incluse: la sostituzione riguarda le sole aste.</p></section>
+<section data-step="3" aria-labelledby="t3" hidden><h2 id="t3" tabindex="-1">3. Montaggio</h2>
+<fieldset><legend>Schema di foratura utilizzato</legend><div class="schede">${schemi}</div><p class="aiuto">Illustrazioni indicative.</p><p class="errore" data-errore="schemaForatura" aria-live="polite"></p></fieldset>
+${_campo('forzaN', 'Forza stampata sull\'asta (N)', '<input id="f-forzaN" name="forzaN" type="text" inputmode="numeric" autocomplete="off">', `<details><summary>Dove trovo la forza?</summary>${_esc(T.guidaForza)}</details>`)}</section>
+<section data-step="4" aria-labelledby="t4" hidden><h2 id="t4" tabindex="-1">4. Il guasto</h2>
+${_campo('motivo', 'Motivo del malfunzionamento', `<select id="f-motivo" name="motivo">${motivi}</select>`)}
+${_campo('motivoNote', 'Descrizione (facoltativa)', '<textarea id="f-motivoNote" name="motivoNote" rows="4"></textarea>')}
+<ul class="checklist"><li>Le staffe sono montate come da schema di foratura.</li><li>L'asta non è piegata, forata o verniciata.</li><li>Il peso dell'anta corrisponde alla forza indicata.</li></ul></section>
+<section data-step="5" aria-labelledby="t5" hidden><h2 id="t5" tabindex="-1">5. Riepilogo e invio</h2>
+${_campo('clienteNome', 'Nome e cognome', '<input id="f-clienteNome" name="clienteNome" type="text" autocomplete="name">')}
+${_campo('clienteEmail', 'Email', '<input id="f-clienteEmail" name="clienteEmail" type="email" autocomplete="email">')}
+${_campo('clienteTelefono', 'Telefono (facoltativo)', '<input id="f-clienteTelefono" name="clienteTelefono" type="tel" autocomplete="tel">')}
+${_campo('indirizzo', 'Indirizzo di spedizione', '<input id="f-indirizzo" name="indirizzo" type="text" autocomplete="street-address">')}
+<ul id="avvisi" class="avvisi"></ul>
+<pre id="riepilogo" tabindex="0" aria-label="Riepilogo della richiesta"></pre>
+<p class="nota">${_esc(T.promemoriaAllegati)}</p>
+<div class="spunta"><label><input type="checkbox" name="allegatiConfermati"> Allegherò documento d'acquisto e foto.</label><p class="errore" data-errore="allegatiConfermati" aria-live="polite"></p></div>
+<div class="spunta"><label><input type="checkbox" name="privacy"> Acconsento al trattamento dei dati per gestire la richiesta (vedi Privacy Policy del sito).</label><p class="errore" data-errore="privacy" aria-live="polite"></p></div>
+</section>
+<nav class="azioni" aria-label="Navigazione">
+<button type="button" class="secondario" data-action="indietro">${_esc(T.indietro)}</button>
+<button type="button" class="primario" data-action="avanti">${_esc(T.avanti)}</button>
+<span data-gruppo="uscita"><button type="button" class="primario" data-action="invia">Invia email</button> <button type="button" class="secondario" data-action="copia">Copia testo</button> <button type="button" class="secondario" data-action="stampa">Stampa / Salva PDF</button></span>
+</nav>
+<p id="stato-azione" class="nota" role="status" aria-live="polite"></p>
+</form>`;
+}
+
+function iniziaApp(root, catalogo, opzioni) {
+  opzioni = opzioni || {};
+  const T = TESTI;
+  const storage = opzioni.storage !== undefined ? opzioni.storage : _storageSicuro();
+  root.innerHTML = _markup(catalogo, T);
+  const form = root.querySelector('form');
+  const bozza = caricaBozza(storage);
+  let dati = (bozza && bozza.dati) || {};
+  let passo = (bozza && bozza.passo >= 1 && bozza.passo <= 5) ? bozza.passo : 1;
+  const codice = (bozza && bozza.codice) || generaCodice(new Date(), Math.random);
+  const oggi = () => opzioni.oggi || _oggiISO();
+
+  const q = (sel) => form.querySelector(sel);
+  const el = (nome) => form.elements[nome];
+
+  function leggiForm() {
+    const d = {};
+    form.querySelectorAll('[name]').forEach((e) => {
+      if (e.type === 'checkbox') d[e.name] = e.checked;
+      else if (e.type === 'radio') { if (e.checked) d[e.name] = e.value; else if (!(e.name in d)) d[e.name] = ''; }
+      else d[e.name] = e.value;
+    });
+    return d;
+  }
+  function popolaDipendenti(modello) {
+    const m = catalogo.modelli[modello];
+    const imposta = (nome, valori, vuoto) => { el(nome).innerHTML = _opzioni(m ? valori : [], m ? 'Scegli…' : vuoto); };
+    imposta('apertura', m && m.aperture, 'Scegli prima il modello');
+    imposta('dimensione', m && m.dimensioni, 'Scegli prima il modello');
+    imposta('versione', m && m.versioni, 'Scegli prima il modello');
+  }
+  function scriviForm(d) {
+    if (d.modello) { el('modello').value = d.modello; popolaDipendenti(d.modello); }
+    form.querySelectorAll('[name]').forEach((e) => {
+      if (!(e.name in d)) return;
+      if (e.type === 'checkbox') e.checked = !!d[e.name];
+      else if (e.type === 'radio') e.checked = e.value === d[e.name];
+      else if (e.name !== 'modello') e.value = d[e.name];
+    });
+  }
+
+  function aggiornaBadge() {
+    const g = valutaGaranzia(dati.docData, oggi(), catalogo.garanziaMesi);
+    const b = q('#esito-garanzia');
+    b.className = 'badge' + (g.stato === 'in_garanzia' ? ' ok' : g.stato === 'fuori_garanzia' ? ' attenzione' : '');
+    b.textContent = g.stato === 'in_garanzia' ? `${T.garanzia.in} ${formatoData(g.scadenzaISO)}`
+      : g.stato === 'fuori_garanzia' ? `${T.garanzia.fuori} ${formatoData(g.scadenzaISO)}` : '';
+  }
+  function aggiornaRiepilogo() {
+    const r = validaRichiesta(dati, catalogo, oggi());
+    q('#riepilogo').textContent = costruisciEmail(dati, r.garanzia, codice, catalogo).corpoCompleto;
+    q('#avvisi').innerHTML = r.avvisi.map((a) => `<li>${_esc(a)}</li>`).join('');
+  }
+  function mostraPasso() {
+    form.querySelectorAll('section[data-step]').forEach((s) => { s.hidden = Number(s.dataset.step) !== passo; });
+    root.querySelectorAll('[data-prog]').forEach((li) => {
+      const n = Number(li.dataset.prog);
+      li.classList.toggle('fatto', n < passo);
+      if (n === passo) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    });
+    q('[data-action="indietro"]').hidden = passo === 1;
+    q('[data-action="avanti"]').hidden = passo === 5;
+    q('[data-gruppo="uscita"]').hidden = passo !== 5;
+    if (passo === 5) aggiornaRiepilogo();
+  }
+  function mostraErrori(errori, campi) {
+    form.querySelectorAll('[data-errore]').forEach((p) => { p.textContent = ''; });
+    form.querySelectorAll('[aria-invalid]').forEach((e) => e.removeAttribute('aria-invalid'));
+    let primo = null;
+    for (const c of campi) {
+      if (!errori[c]) continue;
+      form.querySelector(`[data-errore="${c}"]`).textContent = errori[c];
+      const campo = form.querySelector(`[name="${c}"]`);
+      if (campo) { campo.setAttribute('aria-invalid', 'true'); if (!primo) primo = campo; }
+    }
+    if (primo) primo.focus();
+    return !primo;
+  }
+  function vaiA(n, focusTitolo) {
+    passo = n; mostraPasso(); salva();
+    if (focusTitolo) { const h = q(`section[data-step="${n}"] h2`); h.focus(); h.scrollIntoView(); }
+  }
+  function salva() { salvaBozza({ dati, passo, codice }, storage); }
+
+  function suCambio(e) {
+    dati = leggiForm();
+    if (e.target.name === 'modello') { popolaDipendenti(dati.modello); dati = leggiForm(); }
+    aggiornaBadge();
+    if (passo === 5) aggiornaRiepilogo();
+    salva();
+  }
+  form.addEventListener('input', suCambio);
+  form.addEventListener('change', suCambio);
+
+  root.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-action]');
+    if (!b) return;
+    const azione = b.dataset.action;
+    if (azione === 'indietro' && passo > 1) vaiA(passo - 1, true);
+    if (azione === 'avanti') {
+      dati = leggiForm();
+      const r = validaRichiesta(dati, catalogo, oggi());
+      if (mostraErrori(r.errori, _CAMPI_PASSO[passo])) vaiA(passo + 1, true);
+    }
+    if (root._gestoreUscita) root._gestoreUscita(azione);
+  });
+
+  // stato iniziale
+  scriviForm(dati);
+  dati = leggiForm();
+  aggiornaBadge();
+  mostraPasso();
+  return { codice, ottieni: () => dati, errori: mostraErrori, passo: () => passo };
+}
+
+if (typeof document !== 'undefined' && document.getElementById('app')) {
+  iniziaApp(document.getElementById('app'), CATALOGO);
+}
 
 </script>
 </body>

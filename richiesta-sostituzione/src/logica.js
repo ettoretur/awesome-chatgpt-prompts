@@ -63,6 +63,11 @@ function generaCodice(oggi, rand) {
   return `RS-${oggi.getFullYear()}${_pad(oggi.getMonth() + 1)}${_pad(oggi.getDate())}-${suffisso}`;
 }
 
+function formatoData(iso) {
+  const p = _parseISO(iso);
+  return p ? `${_pad(p.d)}/${_pad(p.m)}/${_pad(p.y, 4)}` : '';
+}
+
 const _CHIAVE_BOZZA = 'rs-bozza-v1';
 function salvaBozza(dati, storage) {
   try { if (!storage) return false; storage.setItem(_CHIAVE_BOZZA, JSON.stringify(dati)); return true; } catch (e) { return false; }
@@ -75,4 +80,4 @@ function caricaBozza(storage) {
   } catch (e) { return null; }
 }
 
-if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza };
+if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData };

@@ -4,10 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Richiesta sostituzione aste a gas</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--muted:#5b6675;--line:#d3d9e1;--accent:#0b5cad;--accent-ink:#fff;--ok:#1d7a3c;--warn:#a8590a;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1b222b;--ink:#e8edf3;--muted:#a3afbf;--line:#37424f;--accent:#6aa9ee;--accent-ink:#0a1420;--ok:#5fd18a;--warn:#f0a35a;--err:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+header{margin-bottom:12px}h1{font-size:1.5rem;margin:.2em 0}h2{font-size:1.2rem;margin:0 0 .8em}h2:focus{outline:none}
+.marchio{margin:0;font-weight:700;color:var(--accent);letter-spacing:.02em}
+form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.progresso{display:flex;gap:4px;list-style:none;padding:0;margin:0 0 12px;font-size:.78rem;color:var(--muted);overflow:hidden}
+.progresso li{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progresso span{display:inline-block;width:1.5em;height:1.5em;line-height:1.5em;text-align:center;border-radius:50%;border:1px solid var(--line)}
+.progresso li[aria-current] {color:var(--ink);font-weight:700}.progresso li[aria-current] span,.progresso li.fatto span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+section[hidden],[hidden]{display:none!important}
+.campo{margin-bottom:14px}label{display:block;font-weight:600;margin-bottom:4px}
+input[type=text],input[type=email],input[type=tel],input[type=date],input[type=number],select,textarea{width:100%;padding:10px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+input[type=checkbox],input[type=radio]{width:1.15em;height:1.15em;margin-right:8px;vertical-align:middle}
+.spunta label{font-weight:400}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[aria-invalid=true]{border-color:var(--err)}
+.errore{color:var(--err);font-size:.9rem;margin:.3em 0 0}.errore:empty{display:none}
+.aiuto,.nota{color:var(--muted);font-size:.9rem;margin:.3em 0}
+.badge{margin:0;padding:8px 12px;border-radius:8px;font-weight:600}.badge:empty{display:none}.badge.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}.badge.attenzione{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+fieldset{border:0;padding:0;margin:0 0 14px}legend{font-weight:600;margin-bottom:6px;padding:0}
+.schede{display:grid;gap:8px}.scheda{display:flex;align-items:center;gap:12px;font-weight:400;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.scheda:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.scheda svg{flex:none}.pannello{fill:none;stroke:var(--muted);stroke-width:2}.scheda circle{fill:var(--accent)}
+.scheda small{display:block;color:var(--muted)}
+details{margin-top:4px}summary{cursor:pointer;color:var(--accent)}
+.checklist{color:var(--muted);padding-left:1.2em}
+.avvisi{color:var(--warn);padding-left:1.2em}.avvisi:empty{display:none}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font:.85rem/1.5 ui-monospace,monospace}
+.azioni{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;margin-top:16px}
+[data-gruppo=uscita]{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--line);cursor:pointer;min-height:44px}
+.primario{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.secondario{background:var(--card);color:var(--ink)}
+</style>
 </head>
 <body>
-<main id="app"><h1>Richiesta di sostituzione aste a gas</h1></main>
+<main id="app"></main>
 <!--INLINE:catalogo.js-->
 <!--INLINE:testi.js-->
+<!--INLINE:logica.js-->
+<!--INLINE:email.js-->
+<!--INLINE:app.js-->
 </body>
 </html>
