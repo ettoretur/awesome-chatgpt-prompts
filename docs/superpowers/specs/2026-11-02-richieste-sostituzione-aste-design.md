@@ -1,230 +1,169 @@
-# Dashboard richieste di sostituzione aste a gas — Design
+# Procedura HTML richiesta sostituzione aste a gas — Design (v2)
 
-Data: 2026-11-02 · Stato: bozza per revisione · Lingua al lancio: solo italiano
+Data: 2026-11-02 · Stato: v2 per revisione · Lingua: solo italiano
+
+Revisione: la v1 prevedeva backend PHP, DB, stato richieste e vista admin.
+Su richiesta del cliente è sostituita da **un solo file HTML autonomo, senza
+backend** (§2).
 
 ## 1. Obiettivo
 
-Permettere al cliente finale di Italiana Ferramenta (prodotto "Gas lid stays",
-`shop.italianaferramenta.it`, product_id=42) di richiedere la sostituzione di
-aste a gas difettose, fornendo:
+Guidare il cliente finale di Italiana Ferramenta (prodotto "Gas lid stays",
+`shop.italianaferramenta.it`, product_id=42) nella richiesta di sostituzione di
+aste a gas difettose, raccogliendo:
 
 1. documento di acquisto,
 2. schema di foratura utilizzato,
 3. forza (N) stampata sull'asta,
 4. motivo del malfunzionamento.
 
-Il personale interno gestisce le richieste da una vista admin. Il cliente
-segue lo stato della propria richiesta. Il sistema è una pagina autonoma
-collegabile dal sito: nessuna modifica a OpenCart.
+Al termine la procedura produce un **riepilogo completo** e prepara l'invio a
+info@italianaferramenta.it. Il personale riceve richieste già ordinate e
+pre-controllate.
 
-## 2. Decisioni confermate
+## 2. Decisioni e conseguenze
 
-| Tema | Decisione |
-|---|---|
-| Approccio | A: pagina autonoma + backend leggero con DB |
-| Hosting | Infrastruttura Italiana Ferramenta (non servizio gestito) |
-| Funzioni cliente | Nuova richiesta, stato richieste, guida alla compilazione, pre-controllo automatico |
-| Funzioni interne | Vista admin con coda, filtri, cambio stato, export CSV |
-| Identificazione cliente | Codice pratica + email, senza account |
-| Schemi di foratura | Usare quelli standard (vedi §9, da validare) |
-| Regola business | Garanzia calcolata dalla data d'acquisto |
-| Lingua | Solo italiano; testi in file separato per aggiungere EN/FR/DE |
+| Tema | Decisione | Conseguenza |
+|---|---|---|
+| Formato | Un file `richiesta-sostituzione.html` autonomo (HTML+CSS+JS inline, nessuna libreria esterna) | Si pubblica copiando un file su qualsiasi hosting o pagina del sito |
+| Backend | Nessuno | **Cadono**: stato richieste, vista admin, CSV, DB, login |
+| Invio | Email precompilata (`mailto:`) + riepilogo stampabile/PDF + pulsante "Copia testo" | Il cliente invia dal proprio client email |
+| Allegati | Non caricati dalla pagina | Il cliente allega documento e foto nell'email; la procedura lo ricorda e lo verifica con una spunta |
+| Schemi di foratura | Standard, con valori segnaposto (§8) | Da validare |
+| Garanzia | Calcolata dalla data d'acquisto | Parametro unico (§8) |
+| Lingua | Solo italiano; testi raccolti in un unico oggetto JS | Predisposto per altre lingue |
 
-## 3. Assunzioni da validare in revisione
+## 3. Assunzioni da validare
 
-- **A1 — Stack:** PHP 8.x + MySQL (o SQLite se non disponibile). Motivo: lo
-  shop è OpenCart, quindi l'hosting supporta quasi certamente PHP/MySQL.
-  *Non verificato.*
-- **A2 — Garanzia:** 24 mesi dalla data del documento d'acquisto, valore
-  segnaposto. *Da confermare;* è configurabile (§9).
-- **A3 — Forze ammesse e schemi di foratura:** valori segnaposto. I valori
-  reali sono solo nelle immagini della pagina prodotto, che non sono state
-  lette. Vedi §9.
-- **A4 — Staffe:** per Compact e Kraby le staffe non sono incluse
-  (avvertenza presente sulla pagina). La sostituzione copre le sole aste, salvo
-  diversa indicazione.
+- **A1 — Garanzia:** 24 mesi dalla data del documento, valore segnaposto.
+- **A2 — Forze e schemi di foratura:** valori segnaposto; i dati reali sono
+  solo nelle immagini della pagina prodotto, non lette.
+- **A3 — Staffe:** per Compact e Kraby le staffe non sono incluse (avvertenza
+  sulla pagina); la sostituzione riguarda le sole aste.
+- **A4 — Codice pratica:** senza server non esiste un codice univoco. Si usa un
+  riferimento generato dal browser (`RS-AAAAMMGG-XXXX`, XXXX casuale), utile
+  solo come etichetta nell'oggetto dell'email.
 
-## 4. Architettura
+## 4. Limiti noti dell'invio via `mailto:`
 
-```
-Browser (HTML/CSS/JS, responsive, IT)
-   │  fetch JSON / multipart
-   ▼
-API PHP  ──►  DB (richieste, storico_stati, allegati, utenti_admin)
-   │
-   ├──►  Storage allegati (fuori dalla webroot)
-   └──►  Email (SMTP): conferma cliente + notifica interna
-```
+- Non può allegare file.
+- La lunghezza dell'URL è limitata (circa 2000 caratteri su alcuni client): il
+  corpo dell'email contiene solo i dati essenziali, in forma compatta.
+- Richiede un client email configurato: per chi usa solo webmail serve il
+  fallback.
+- Nessuna conferma di ricezione automatica: la risposta avviene via email da
+  parte vostra.
 
-Unità e confini:
+Fallback sempre presenti: **"Copia testo"** (da incollare in qualsiasi
+webmail) e **"Stampa / Salva PDF"** del riepilogo.
 
-- `public/` — pagina cliente (wizard + ricerca stato) e pagina admin.
-- `api/` — endpoint JSON; nessuna logica di business nel frontend oltre alla
-  validazione di comodo.
-- `domain/` — regole pure e testabili: calcolo garanzia, coerenza forza/modello,
-  macchina a stati.
-- `config/catalogo.php` — modelli, forze, schemi di foratura, motivi, durata
-  garanzia. Unica fonte dei dati di prodotto.
-- `storage/` — allegati, non accessibili direttamente via URL.
+## 5. Flusso cliente (wizard, 5 passi)
 
-## 5. Modello dati
+1. **Acquisto** — tipo documento (fattura/scontrino/conferma ordine), numero,
+   data. Esito garanzia mostrato subito.
+2. **Prodotto** — modello (Kraby/Elys/Compact), senso di apertura, dimensione,
+   versione, quantità.
+3. **Montaggio** — schema di foratura (card con illustrazione) e forza letta
+   sull'asta. Guida inline "dove trovo la forza sull'asta".
+4. **Guasto** — motivo (elenco), descrizione, checklist di controllo prima di
+   richiedere (staffe montate correttamente, schema rispettato, asta non
+   piegata o forata).
+5. **Riepilogo e invio** — dati ricontrollati, dati del cliente (nome, email,
+   telefono, indirizzo di spedizione), consenso privacy, promemoria allegati
+   con spunta obbligatoria ("allegherò documento e foto"), pulsanti: Invia
+   email, Copia testo, Stampa/PDF.
 
-**richieste**
+Navigazione avanti/indietro senza perdere i dati. Bozza salvata in
+`sessionStorage` per sopravvivere a un ricaricamento (tutte le letture e
+scritture in try/catch: la procedura funziona anche senza storage).
 
-| Campo | Tipo / note |
-|---|---|
-| id, codice_pratica | `RS-AAAA-NNNNN`, univoco |
-| cliente_nome, cliente_email, cliente_telefono | obbligatori nome+email |
-| indirizzo_spedizione | per la spedizione dell'asta sostitutiva |
-| doc_tipo | fattura / scontrino / conferma ordine |
-| doc_numero, doc_data | data usata per la garanzia |
-| modello | Kraby / Elys / Compact |
-| apertura, dimensione, versione, quantita | come nel configuratore dello shop |
-| schema_foratura | chiave da `catalogo.php` |
-| forza_n | intero, validato su modello/dimensione |
-| motivo | chiave da `catalogo.php` |
-| motivo_note | testo libero |
-| esito_garanzia | in_garanzia / fuori_garanzia / da_verificare |
-| anomalie | JSON: elenco avvisi del pre-controllo |
-| stato | vedi §7 |
-| creata_il, aggiornata_il | timestamp |
-
-**allegati** — richiesta_id, tipo (documento/foto), nome originale, percorso,
-mime, dimensione.
-
-**storico_stati** — richiesta_id, stato, nota, visibile_cliente, autore, data.
-
-**utenti_admin** — email, hash password (`password_hash`), ruolo.
-
-## 6. Vista cliente
-
-### 6.1 Nuova richiesta (wizard, 5 passi)
-
-1. **Acquisto** — tipo documento, numero, data, upload (PDF/JPG/PNG).
-2. **Prodotto** — modello, senso di apertura, dimensione, versione, quantità.
-3. **Montaggio** — schema di foratura (card con immagine) e forza letta
-   sull'asta. Accanto: guida "dove trovo la forza stampata sull'asta".
-4. **Guasto** — motivo (elenco), descrizione, foto (opzionali ma consigliate).
-5. **Riepilogo e invio** — controllo dei dati, consenso privacy, invio.
-   Al termine: codice pratica a schermo e per email.
-
-Lo stato del wizard è mantenuto nel browser (sessionStorage con fallback in
-memoria); il server riceve la richiesta solo all'invio finale.
-
-### 6.2 Pre-controllo (calcolato dal server, anteprima lato client)
+## 6. Pre-controllo (tutto lato browser)
 
 | Controllo | Esito |
 |---|---|
-| Garanzia: `doc_data` + N mesi ≥ oggi | in_garanzia / fuori_garanzia |
-| Data nel futuro o precedente al lancio del prodotto | bloccante |
+| Garanzia: data documento + N mesi ≥ oggi | in garanzia / fuori garanzia |
+| Data futura o non valida | bloccante |
 | Forza non ammessa per modello/dimensione | bloccante |
 | Schema di foratura incompatibile con il modello | avviso |
-| Documento mancante o illeggibile | bloccante all'invio |
-| Quantità richiesta > quantità acquistata (se indicata) | avviso |
+| Campi obbligatori mancanti | bloccante, con messaggio per campo |
+| Spunta allegati non confermata | bloccante all'invio |
 
-Una richiesta fuori garanzia **non** viene bloccata: arriva in coda come
-"da valutare" con l'avviso visibile all'operatore.
+Fuori garanzia **non blocca**: la richiesta è marcata "da valutare" nel
+riepilogo e nell'oggetto dell'email.
 
-### 6.3 Stato richiesta
+## 7. Riepilogo e contenuto dell'email
 
-Form codice pratica + email. Mostra riepilogo, timeline degli stati con le sole
-note marcate `visibile_cliente`, e consente di rispondere a una richiesta di
-integrazione allegando file.
+Oggetto: `Richiesta sostituzione aste [RS-AAAAMMGG-XXXX] — [modello], [forza] N`
 
-## 7. Macchina a stati
+Corpo (compatto): cliente e recapiti, documento (tipo, numero, data), esito
+garanzia, prodotto (modello, apertura, dimensione, versione, quantità), schema
+di foratura, forza, motivo e descrizione, elenco allegati da inserire. La
+versione stampabile ha lo stesso contenuto con impaginazione estesa e
+intestazione aziendale.
 
-```
-ricevuta → in_verifica → integrazione_richiesta ⇄ in_verifica
-in_verifica → approvata → spedita → chiusa
-in_verifica → rifiutata → chiusa
-```
+## 8. Dati di prodotto (oggetto `CATALOGO` in testa al file)
 
-Ogni transizione è registrata in `storico_stati`. Solo l'admin può cambiare
-stato; ogni cambio può inviare email al cliente (scelta dell'operatore).
-Transizioni non previste vengono rifiutate dal dominio.
+Tutti **SEGNAPOSTO DA CORREGGERE** prima del rilascio:
 
-## 8. Vista admin
-
-- Login con email + password; sessione con cookie `HttpOnly`, `Secure`,
-  `SameSite=Lax`; protezione CSRF sulle azioni di scrittura.
-- **Coda:** filtri per stato, modello, motivo, esito garanzia, intervallo date;
-  ricerca per codice pratica o email.
-- **Dettaglio:** dati cliente, allegati (download autenticato), esito
-  pre-controllo, storico, cambio stato con nota e flag di visibilità.
-- **Statistiche:** conteggi per motivo e per modello/forza, per individuare
-  difetti ricorrenti.
-- **Export CSV** della selezione corrente.
-
-## 9. Configurazione dei dati di prodotto (`config/catalogo.php`)
-
-Tutti i valori seguenti sono **SEGNAPOSTO DA CORREGGERE** prima del rilascio:
-
-- `garanzia_mesi`: `24`, decorrenza dalla data del documento d'acquisto.
-- `modelli`: Kraby, Elys, Compact, ciascuno con dimensioni e versioni.
-- `forze_ammesse_n`: elenco per modello/dimensione (es. `[20, 40, 60, 80, 100,
-  120, 150]`). *Segnaposto: non letti dalla pagina.*
-- `schemi_foratura`: schemi standard con chiave, etichetta, immagine e modelli
-  compatibili. *Segnaposto: l'elenco reale va fornito da Italiana Ferramenta.*
+- `garanziaMesi`: `24`.
+- `modelli`: Kraby, Elys, Compact con dimensioni e versioni.
+- `forzeAmmesseN` per modello/dimensione (es. `[20, 40, 60, 80, 100, 120,
+  150]`). Non letti dalla pagina.
+- `schemiForatura`: chiave, etichetta, illustrazione SVG inline, modelli
+  compatibili. L'elenco reale va fornito da Italiana Ferramenta.
 - `motivi`: non mantiene la forza / perdita di gas; si chiude da solo o non
-  tiene aperta l'anta; rumorosità o attrito; cedimento di staffa o
-  attacco; danno da trasporto; altro.
+  tiene aperta l'anta; rumorosità o attrito; cedimento di staffa o attacco;
+  danno da trasporto; altro.
+- `destinatario`: `info@italianaferramenta.it`.
 
-Un test automatico fallisce se in produzione compare un valore marcato
-`TODO-SEGNAPOSTO`.
+I segnaposto sono marcati `TODO-SEGNAPOSTO`; un controllo nel test impedisce di
+rilasciare con valori ancora marcati.
 
-## 10. Sicurezza e privacy
+## 9. Privacy
 
-- Query solo preparate (PDO); output sempre escapato.
-- Upload: whitelist di mime reali (non solo estensione), limite 8 MB per file,
-  max 6 file per richiesta, rinomina con nome casuale, storage fuori webroot,
-  nessuna esecuzione.
-- Rate limit e honeypot sul modulo; CSRF sulle azioni admin.
-- Ricerca stato: stesso messaggio per codice inesistente ed email errata, per
-  non rivelare quali pratiche esistono.
-- GDPR: informativa e consenso espliciti nel passo 5; i dati personali
-  restano solo sul vostro hosting; periodo di conservazione da definire
-  (default proposto: 24 mesi dalla chiusura). Va verificato con il vostro
-  consulente privacy.
+Nessun dato lascia il browser finché il cliente non invia l'email: nessun
+server, nessun tracciamento, nessun servizio esterno. Informativa breve e
+consenso esplicito al passo 5, con rimando alla Privacy Policy del sito. Il
+testo definitivo va validato dal vostro consulente privacy.
 
-## 11. Gestione errori
+## 10. Accessibilità, mobile, stile
 
-- Validazione duplicata client/server; messaggi in italiano, per campo.
-- Errori server: risposta JSON con codice e messaggio generico; dettaglio solo
-  nei log.
-- Invio email fallito: la richiesta resta salvata, l'evento è loggato e
-  riprovato; l'operatore vede il flag "email non inviata".
+- Responsive da 360 px, nessuno scroll orizzontale.
+- Navigazione completa da tastiera, label associate, errori annunciati
+  (`aria-live`), contrasto AA.
+- Stile coerente con il sito (logo e colori da concordare; il sito non è
+  stato analizzato visivamente), tema chiaro/scuro.
+- Nessuna dipendenza esterna: font di sistema, illustrazioni SVG inline.
 
-## 12. Test
+## 11. Test
 
-- **Unit (dominio):** garanzia (limiti: giorno esatto, anno bisestile, data
-  futura), coerenza forza/modello, transizioni valide e non valide.
-- **API:** creazione richiesta, validazioni, upload (file non ammessi),
-  ricerca stato con dati errati, permessi admin.
-- **End-to-end:** richiesta → notifica → cambio stato in admin → il cliente
-  vede la timeline.
-- **Accessibilità e mobile:** navigazione da tastiera del wizard, contrasto,
-  uso a 360 px di larghezza.
+- **Logica (unit):** garanzia (giorno esatto, anno bisestile, data futura),
+  coerenza forza/modello, costruzione di oggetto e corpo email entro il
+  limite di lunghezza, assenza di `TODO-SEGNAPOSTO`.
+- **Browser (Playwright):** percorso completo felice, blocchi sui campi
+  mancanti, caso fuori garanzia, caso forza non ammessa, bozza dopo reload,
+  funzionamento senza storage, viewport 360 px, stampa.
 
-## 13. Fuori ambito (YAGNI)
+## 12. Fuori ambito
 
-Account cliente e login cliente, integrazione con ordini OpenCart, pagamenti o
-resi a pagamento, tracking del corriere, multilingua (predisposto ma non
-attivo), app mobile.
+Stato richieste, vista admin, esportazione CSV, upload di file, conferme
+automatiche, integrazione OpenCart, account cliente, multilingua attiva.
+Restano possibili in una v3 con backend (la v1 di questa spec è nella cronologia
+git).
 
-## 14. Rischi
+## 13. Rischi
 
 | Rischio | Mitigazione |
 |---|---|
-| Dati di prodotto (forze, schemi) errati | Config separata, test anti-segnaposto, revisione prima del lancio |
-| Garanzia diversa da 24 mesi | Parametro unico in config |
-| Abuso del modulo (spam, upload malevoli) | Rate limit, honeypot, whitelist mime, storage non eseguibile |
-| Hosting senza PHP/MySQL recente | Verificare versioni prima del piano; fallback SQLite |
+| Dati di prodotto errati | Oggetto `CATALOGO` unico, test anti-segnaposto, revisione prima del lancio |
+| `mailto:` non funziona o tronca il corpo | Corpo compatto, "Copia testo", PDF |
+| Richieste senza allegati | Spunta obbligatoria e promemoria nel riepilogo |
+| Garanzia diversa da 24 mesi | Parametro unico |
 
-## 15. Domande aperte
+## 14. Domande aperte
 
-1. Versioni di PHP e database disponibili sul vostro hosting (conferma A1).
-2. Elenco reale degli schemi di foratura, con immagini.
-3. Forze ammesse per modello/dimensione/versione.
-4. Durata e decorrenza della garanzia (conferma A2).
-5. Politica di conservazione dei dati personali.
-6. Spese di spedizione della sostituzione: a carico vostro, sempre o solo in garanzia?
+1. Elenco reale degli schemi di foratura, con immagini.
+2. Forze ammesse per modello/dimensione/versione.
+3. Durata e decorrenza della garanzia.
+4. Logo e colori da usare (o li ricavo dal sito).
+5. Spese di spedizione della sostituzione: a carico vostro sempre o solo in garanzia?
