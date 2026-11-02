@@ -181,25 +181,33 @@ function iniziaApp(root, catalogo, opzioni) {
 
   const stato = (msg) => { q('#stato-azione').textContent = msg; };
   let inviando = false;
-  function invia() {
-    if (inviando) return;
+  // Controlli comuni a invio e copia: se qualcosa manca porta al primo passo con errori.
+  function verificaTutto() {
     dati = leggiForm();
     const r = validaRichiesta(dati, catalogo, oggi());
     const primoPasso = [1, 2, 3, 4, 5].find((n) => _CAMPI_PASSO[n].some((c) => r.errori[c]));
     if (primoPasso) {
       if (primoPasso !== passo) vaiA(primoPasso, false);
       mostraErrori(r.errori, _CAMPI_PASSO[primoPasso]);
-      return;
+      return null;
     }
+    return r;
+  }
+  function invia() {
+    if (inviando) return;
+    const r = verificaTutto();
+    if (!r) return;
     inviando = true;
     setTimeout(() => { inviando = false; }, 2000);
     const apri = opzioni.apriMail || (typeof window.__rsApriMail === 'function' ? window.__rsApriMail : (u) => { window.location.href = u; });
-    apri(costruisciEmail(dati, r.garanzia, codice, catalogo).mailto);
-    stato(T.invioAvviato);
+    const email = costruisciEmail(dati, r.garanzia, codice, catalogo);
+    apri(email.mailto);
+    stato(email.troncata ? T.invioTroncato : T.invioAvviato);
   }
   async function copia() {
-    dati = leggiForm();
-    const testo = costruisciEmail(dati, validaRichiesta(dati, catalogo, oggi()).garanzia, codice, catalogo).corpoCompleto;
+    const r = verificaTutto();
+    if (!r) return;
+    const testo = costruisciEmail(dati, r.garanzia, codice, catalogo).corpoCompleto;
     try {
       await navigator.clipboard.writeText(testo);
       stato(T.copiato);

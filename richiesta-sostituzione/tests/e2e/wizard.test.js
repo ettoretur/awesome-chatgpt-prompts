@@ -32,6 +32,7 @@ test('fuori garanzia: avviso e si può proseguire', async () => {
   await page.fill('[name=docNumero]', '9');
   await page.fill('[name=docData]', '2023-01-01');
   assert.match((await page.locator('#esito-garanzia').innerText()).toLowerCase(), /fuori garanzia/);
+  assert.match(await page.locator('#esito-garanzia').innerText(), /scaduta il 01\/01\/2025/);
   await avanti(page);
   assert.ok(await passo(page, 2).isVisible());
   await page.close();

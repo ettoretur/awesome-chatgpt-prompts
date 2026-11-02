@@ -103,18 +103,20 @@ const TESTI = {
     email: 'Inserisci un indirizzo email valido.',
     dataNonValida: 'Inserisci una data valida, non futura.',
     quantita: 'Inserisci un numero intero maggiore di zero.',
-    forza: 'Questa forza non è prevista per il modello e la dimensione scelti.',
+    forza: 'Questa forza non è prevista per il modello e la dimensione scelti: ricontrolla il valore stampato sull\'asta.',
     allegati: 'Conferma che allegherai documento e foto.',
     privacy: 'Serve il consenso al trattamento dei dati.'
   },
   avvisi: {
     schema: 'Lo schema di foratura scelto non è abituale per questo modello: lo verificheremo.',
+    forzaNonLeggibile: 'Forza non leggibile: la verificheremo sul pezzo.',
     fuoriGaranzia: 'La data d\'acquisto è fuori garanzia: la richiesta sarà valutata caso per caso.'
   },
-  garanzia: { in: 'In garanzia fino al', fuori: 'Fuori garanzia dal', nonValida: 'Data non valida' },
-  guidaForza: 'La forza è stampata sul corpo dell\'asta, in Newton (N), vicino al marchio. Se non la leggi, scrivi "non leggibile" nelle note.',
+  garanzia: { in: 'In garanzia fino al', fuori: 'Fuori garanzia: scaduta il', nonValida: 'Data non valida' },
+  guidaForza: 'La forza è stampata sul corpo dell\'asta, in Newton (N), vicino al marchio. Se non la leggi, scrivi "non leggibile" nel campo.',
   promemoriaAllegati: 'Allega all\'email: documento d\'acquisto (foto o PDF) e foto dell\'asta e del montaggio.',
   invioAvviato: 'Si apre il tuo programma di posta. Se non succede nulla, usa "Copia testo" e incollalo nella tua email.',
+  invioTroncato: 'La descrizione è lunga e nel link è stata accorciata: per inviarla intera usa "Copia testo" e incollala nella tua email.',
   copiato: 'Testo copiato negli appunti.',
   copiaFallita: 'Copia non riuscita: seleziona il testo e copialo a mano.'
 };
@@ -148,6 +150,15 @@ function valutaGaranzia(docDataISO, oggiISO, mesi) {
   return { stato: oggiISO <= scadenzaISO ? 'in_garanzia' : 'fuori_garanzia', scadenzaISO };
 }
 
+// Accetta "60", "60N", "60 N" e "non leggibile"; altro resta com'è (e verrà rifiutato).
+function normalizzaForza(v) {
+  const s = String(v === undefined || v === null ? '' : v).trim();
+  const m = /^(\d+)\s*n$/i.exec(s);
+  if (m) return m[1];
+  if (/^non\s+leggibile$/i.test(s)) return 'non leggibile';
+  return s;
+}
+
 const _vuoto = (v) => v === undefined || v === null || String(v).trim() === '';
 
 function validaRichiesta(dati, catalogo, oggiISO) {
@@ -166,8 +177,9 @@ function validaRichiesta(dati, catalogo, oggiISO) {
   if (!/^\d+$/.test(String(dati.quantita).trim()) || Number(dati.quantita) < 1) errori.quantita = E.quantita;
 
   const modello = catalogo.modelli[dati.modello];
-  const forza = String(dati.forzaN).trim();
+  const forza = normalizzaForza(dati.forzaN);
   if (_vuoto(dati.forzaN)) errori.forzaN = E.obbligatorio;
+  else if (forza === 'non leggibile') avvisi.push(_T.avvisi.forzaNonLeggibile);
   else if (modello) {
     const ammesse = modello.forzeAmmesseN[dati.dimensione] || [];
     if (!/^\d+$/.test(forza) || !ammesse.includes(Number(forza))) errori.forzaN = E.forza;
@@ -204,12 +216,13 @@ function caricaBozza(storage) {
   } catch (e) { return null; }
 }
 
-if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData };
+if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData, normalizzaForza };
 
 </script>
 <script>
 // Costruzione di oggetto, corpo e link mailto. Nessun accesso al DOM.
 const _LIMITE_MAILTO = 1800;
+const _nf = typeof normalizzaForza !== 'undefined' ? normalizzaForza : require('./logica.js').normalizzaForza;
 const _fd = typeof formatoData !== 'undefined' ? formatoData : require('./logica.js').formatoData;
 
 function costruisciEmail(dati, garanzia, codice, catalogo) {
@@ -218,7 +231,9 @@ function costruisciEmail(dati, garanzia, codice, catalogo) {
   const fuori = garanzia.stato === 'fuori_garanzia';
   const esito = garanzia.stato === 'in_garanzia' ? `in garanzia fino al ${_fd(garanzia.scadenzaISO)}`
     : fuori ? `FUORI GARANZIA, scaduta il ${_fd(garanzia.scadenzaISO)} (da valutare)` : 'data non valida';
-  const oggetto = `Richiesta sostituzione aste [${codice}] — ${dati.modello}, ${dati.forzaN} N` + (fuori ? ' — DA VALUTARE' : '');
+  const forza = _nf(dati.forzaN);
+  const forzaLeggibile = forza !== 'non leggibile';
+  const oggetto = `Richiesta sostituzione aste [${codice}] — ${dati.modello}, ${forzaLeggibile ? forza + ' N' : 'forza non leggibile'}` + (fuori ? ' — DA VALUTARE' : '');
 
   const corpo = (note) => [
     `Richiesta di sostituzione ${codice}`, '',
@@ -226,7 +241,7 @@ function costruisciEmail(dati, garanzia, codice, catalogo) {
     `Spedizione: ${dati.indirizzo}`, '',
     `Documento: ${dati.docTipo} n. ${dati.docNumero} del ${_fd(dati.docData)}`, `Garanzia: ${esito}`, '',
     `Prodotto: ${dati.modello}, apertura ${dati.apertura}, dimensione ${dati.dimensione}, versione ${dati.versione}, quantità ${dati.quantita}`,
-    `Schema di foratura: ${schema}`, `Forza stampata sull'asta: ${dati.forzaN} N`, '',
+    `Schema di foratura: ${schema}`, `Forza stampata sull'asta: ${forzaLeggibile ? forza + ' N' : 'non leggibile'}`, '',
     `Motivo: ${motivo}`, `Note: ${note || '-'}`, '',
     'Allegati da inserire: documento d\'acquisto e foto dell\'asta e del montaggio.'
   ].join('\n');
@@ -235,18 +250,22 @@ function costruisciEmail(dati, garanzia, codice, catalogo) {
     const c = corpo(note);
     return { c, url: `mailto:${catalogo.destinatario}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(c)}` };
   };
-  const nota = String(dati.motivoNote || '');
+  let nota = String(dati.motivoNote || '');
+  if (nota.toWellFormed) nota = nota.toWellFormed(); // niente surrogati isolati: encodeURIComponent lancerebbe URIError
   const corpoCompleto = corpo(nota);
   let r = crea(nota);
+  let troncata = false;
   if (r.url.length > _LIMITE_MAILTO) {
-    let lo = 0, hi = nota.length; // ricerca del troncamento più lungo che entra nel limite
+    troncata = true;
+    const punti = Array.from(nota); // per punti di codice: non spezza le coppie di surrogati (emoji)
+    let lo = 0, hi = punti.length; // ricerca del troncamento più lungo che entra nel limite
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      if (crea(nota.slice(0, mid) + '…').url.length <= _LIMITE_MAILTO) lo = mid; else hi = mid - 1;
+      if (crea(punti.slice(0, mid).join('') + '…').url.length <= _LIMITE_MAILTO) lo = mid; else hi = mid - 1;
     }
-    r = crea(nota.slice(0, lo) + '…');
+    r = crea(punti.slice(0, lo).join('') + '…');
   }
-  return { oggetto, corpoCompleto, corpoMailto: r.c, mailto: r.url };
+  return { oggetto, corpoCompleto, corpoMailto: r.c, mailto: r.url, troncata };
 }
 
 if (typeof module !== 'undefined') module.exports = { costruisciEmail };
@@ -436,25 +455,33 @@ function iniziaApp(root, catalogo, opzioni) {
 
   const stato = (msg) => { q('#stato-azione').textContent = msg; };
   let inviando = false;
-  function invia() {
-    if (inviando) return;
+  // Controlli comuni a invio e copia: se qualcosa manca porta al primo passo con errori.
+  function verificaTutto() {
     dati = leggiForm();
     const r = validaRichiesta(dati, catalogo, oggi());
     const primoPasso = [1, 2, 3, 4, 5].find((n) => _CAMPI_PASSO[n].some((c) => r.errori[c]));
     if (primoPasso) {
       if (primoPasso !== passo) vaiA(primoPasso, false);
       mostraErrori(r.errori, _CAMPI_PASSO[primoPasso]);
-      return;
+      return null;
     }
+    return r;
+  }
+  function invia() {
+    if (inviando) return;
+    const r = verificaTutto();
+    if (!r) return;
     inviando = true;
     setTimeout(() => { inviando = false; }, 2000);
     const apri = opzioni.apriMail || (typeof window.__rsApriMail === 'function' ? window.__rsApriMail : (u) => { window.location.href = u; });
-    apri(costruisciEmail(dati, r.garanzia, codice, catalogo).mailto);
-    stato(T.invioAvviato);
+    const email = costruisciEmail(dati, r.garanzia, codice, catalogo);
+    apri(email.mailto);
+    stato(email.troncata ? T.invioTroncato : T.invioAvviato);
   }
   async function copia() {
-    dati = leggiForm();
-    const testo = costruisciEmail(dati, validaRichiesta(dati, catalogo, oggi()).garanzia, codice, catalogo).corpoCompleto;
+    const r = verificaTutto();
+    if (!r) return;
+    const testo = costruisciEmail(dati, r.garanzia, codice, catalogo).corpoCompleto;
     try {
       await navigator.clipboard.writeText(testo);
       stato(T.copiato);

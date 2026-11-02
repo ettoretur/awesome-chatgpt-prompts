@@ -24,6 +24,15 @@ function valutaGaranzia(docDataISO, oggiISO, mesi) {
   return { stato: oggiISO <= scadenzaISO ? 'in_garanzia' : 'fuori_garanzia', scadenzaISO };
 }
 
+// Accetta "60", "60N", "60 N" e "non leggibile"; altro resta com'è (e verrà rifiutato).
+function normalizzaForza(v) {
+  const s = String(v === undefined || v === null ? '' : v).trim();
+  const m = /^(\d+)\s*n$/i.exec(s);
+  if (m) return m[1];
+  if (/^non\s+leggibile$/i.test(s)) return 'non leggibile';
+  return s;
+}
+
 const _vuoto = (v) => v === undefined || v === null || String(v).trim() === '';
 
 function validaRichiesta(dati, catalogo, oggiISO) {
@@ -42,8 +51,9 @@ function validaRichiesta(dati, catalogo, oggiISO) {
   if (!/^\d+$/.test(String(dati.quantita).trim()) || Number(dati.quantita) < 1) errori.quantita = E.quantita;
 
   const modello = catalogo.modelli[dati.modello];
-  const forza = String(dati.forzaN).trim();
+  const forza = normalizzaForza(dati.forzaN);
   if (_vuoto(dati.forzaN)) errori.forzaN = E.obbligatorio;
+  else if (forza === 'non leggibile') avvisi.push(_T.avvisi.forzaNonLeggibile);
   else if (modello) {
     const ammesse = modello.forzeAmmesseN[dati.dimensione] || [];
     if (!/^\d+$/.test(forza) || !ammesse.includes(Number(forza))) errori.forzaN = E.forza;
@@ -80,4 +90,4 @@ function caricaBozza(storage) {
   } catch (e) { return null; }
 }
 
-if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData };
+if (typeof module !== 'undefined') module.exports = { valutaGaranzia, validaRichiesta, generaCodice, salvaBozza, caricaBozza, formatoData, normalizzaForza };

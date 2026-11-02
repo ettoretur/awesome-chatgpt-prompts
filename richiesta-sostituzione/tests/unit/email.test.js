@@ -44,3 +44,21 @@ test('descrizione lunghissima: mailto troncato, testo completo intatto', () => {
   assert.ok(m.corpoCompleto.includes('x'.repeat(5000)));
   assert.ok(body(m).includes('Marco Rossi') && body(m).includes('Allegati da inserire'));
 });
+
+test('C1: emoji in descrizione lunga, nessuna eccezione e mailto valido', () => {
+  for (const nota of ['😀'.repeat(300), 'Pessimo 👎 '.repeat(200)]) {
+    const m = mail({ motivoNote: nota });
+    assert.ok(m.mailto.length <= 1800, String(m.mailto.length));
+    assert.doesNotThrow(() => decodeURIComponent(m.mailto));
+    assert.ok(m.corpoCompleto.includes(nota));
+  }
+});
+test('I3: troncamento segnalato', () => {
+  assert.strictEqual(mail({ motivoNote: 'x'.repeat(5000) }).troncata, true);
+  assert.strictEqual(mail().troncata, false);
+});
+test('I2: forza digitata come 60N o non leggibile', () => {
+  assert.strictEqual(mail({ forzaN: '60N' }).oggetto, 'Richiesta sostituzione aste [RS-20261102-AB12] — Kraby, 60 N');
+  assert.ok(mail({ forzaN: 'Non leggibile' }).oggetto.includes('Kraby, forza non leggibile'));
+  assert.ok(body(mail({ forzaN: 'non leggibile' })).includes("Forza stampata sull'asta: non leggibile"));
+});

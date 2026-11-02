@@ -63,3 +63,21 @@ test('stampa: pulsanti nascosti, riepilogo visibile', async () => {
   assert.ok(await page.locator('#riepilogo').isVisible());
   await page.close();
 });
+
+test('I1: Copia testo non aggira i controlli', async () => {
+  const page = await pagina();
+  await passo1(page); await passo2(page); await passo3(page); await passo4(page);
+  await page.locator('[data-action="copia"]').click();
+  assert.strictEqual(await page.evaluate(() => window.__copiato), undefined);
+  assert.ok(await page.locator('[data-errore="clienteNome"]').isVisible());
+  assert.ok(await page.locator('[data-errore="privacy"]').isVisible());
+  await page.close();
+});
+test('C1+I3: descrizione lunga con emoji si invia e avvisa dell\'accorciamento', async () => {
+  const page = await pagina();
+  await percorsoCompleto(page, { note: 'Pessimo 👎 '.repeat(200) });
+  await page.locator('[data-action="invia"]').click();
+  assert.strictEqual((await page.evaluate(() => window.__chiamate)).length, 1);
+  assert.match(await page.locator('#stato-azione').innerText(), /accorciata/);
+  await page.close();
+});

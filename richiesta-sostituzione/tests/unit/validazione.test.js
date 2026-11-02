@@ -50,3 +50,12 @@ test('codice pratica', () => {
   assert.strictEqual(generaCodice(new Date(2026, 10, 2), () => 0), 'RS-20261102-AAAA');
   assert.match(generaCodice(new Date(2026, 10, 2), () => 0.5), /^RS-20261102-[A-Z0-9]{4}$/);
 });
+
+test('I2: forza digitata con unità di misura', () => {
+  for (const f of ['60N', '60 N', '60n', ' 60 ']) assert.deepStrictEqual(val({ forzaN: f }).errori, {}, f);
+});
+test('I2: forza non leggibile accettata con avviso', () => {
+  const r = val({ forzaN: 'Non leggibile' });
+  assert.deepStrictEqual(r.errori, {});
+  assert.ok(r.avvisi.some((a) => a.includes('non leggibile')));
+});
