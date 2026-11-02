@@ -20,6 +20,7 @@ const TESTI = {
   garanzia: { in: 'In garanzia fino al', fuori: 'Fuori garanzia dal', nonValida: 'Data non valida' },
   guidaForza: 'La forza è stampata sul corpo dell\'asta, in Newton (N), vicino al marchio. Se non la leggi, scrivi "non leggibile" nelle note.',
   promemoriaAllegati: 'Allega all\'email: documento d\'acquisto (foto o PDF) e foto dell\'asta e del montaggio.',
+  invioAvviato: 'Si apre il tuo programma di posta. Se non succede nulla, usa "Copia testo" e incollalo nella tua email.',
   copiato: 'Testo copiato negli appunti.',
   copiaFallita: 'Copia non riuscita: seleziona il testo e copialo a mano.'
 };

@@ -40,6 +40,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
 [data-gruppo=uscita]{display:flex;flex-wrap:wrap;gap:8px;width:100%}
 button{font:inherit;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--line);cursor:pointer;min-height:44px}
 .primario{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.secondario{background:var(--card);color:var(--ink)}
+@media print{body{background:#fff;color:#000}form{border:0;padding:0}.progresso,.azioni,.campo,.spunta,.nota,.checklist,#stato-azione,.avvisi:empty{display:none!important}h2{display:none}pre{border:0;font-size:11pt;padding:0}}
 </style>
 </head>
 <body>
@@ -113,6 +114,7 @@ const TESTI = {
   garanzia: { in: 'In garanzia fino al', fuori: 'Fuori garanzia dal', nonValida: 'Data non valida' },
   guidaForza: 'La forza è stampata sul corpo dell\'asta, in Newton (N), vicino al marchio. Se non la leggi, scrivi "non leggibile" nelle note.',
   promemoriaAllegati: 'Allega all\'email: documento d\'acquisto (foto o PDF) e foto dell\'asta e del montaggio.',
+  invioAvviato: 'Si apre il tuo programma di posta. Se non succede nulla, usa "Copia testo" e incollalo nella tua email.',
   copiato: 'Testo copiato negli appunti.',
   copiaFallita: 'Copia non riuscita: seleziona il testo e copialo a mano.'
 };
@@ -426,8 +428,45 @@ function iniziaApp(root, catalogo, opzioni) {
       const r = validaRichiesta(dati, catalogo, oggi());
       if (mostraErrori(r.errori, _CAMPI_PASSO[passo])) vaiA(passo + 1, true);
     }
-    if (root._gestoreUscita) root._gestoreUscita(azione);
+    if (azione === 'invia') invia();
+    if (azione === 'copia') copia();
+    if (azione === 'stampa') window.print();
   });
+
+  const stato = (msg) => { q('#stato-azione').textContent = msg; };
+  let inviando = false;
+  function invia() {
+    if (inviando) return;
+    dati = leggiForm();
+    const r = validaRichiesta(dati, catalogo, oggi());
+    const primoPasso = [1, 2, 3, 4, 5].find((n) => _CAMPI_PASSO[n].some((c) => r.errori[c]));
+    if (primoPasso) {
+      if (primoPasso !== passo) vaiA(primoPasso, false);
+      mostraErrori(r.errori, _CAMPI_PASSO[primoPasso]);
+      return;
+    }
+    inviando = true;
+    setTimeout(() => { inviando = false; }, 2000);
+    const apri = opzioni.apriMail || (typeof window.__rsApriMail === 'function' ? window.__rsApriMail : (u) => { window.location.href = u; });
+    apri(costruisciEmail(dati, r.garanzia, codice, catalogo).mailto);
+    stato(T.invioAvviato);
+  }
+  async function copia() {
+    dati = leggiForm();
+    const testo = costruisciEmail(dati, validaRichiesta(dati, catalogo, oggi()).garanzia, codice, catalogo).corpoCompleto;
+    try {
+      await navigator.clipboard.writeText(testo);
+      stato(T.copiato);
+    } catch (e) {
+      try {
+        const t = document.createElement('textarea');
+        t.value = testo; document.body.appendChild(t); t.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(t);
+        stato(ok ? T.copiato : T.copiaFallita);
+      } catch (e2) { stato(T.copiaFallita); }
+    }
+  }
 
   // stato iniziale
   scriviForm(dati);

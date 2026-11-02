@@ -174,8 +174,45 @@ function iniziaApp(root, catalogo, opzioni) {
       const r = validaRichiesta(dati, catalogo, oggi());
       if (mostraErrori(r.errori, _CAMPI_PASSO[passo])) vaiA(passo + 1, true);
     }
-    if (root._gestoreUscita) root._gestoreUscita(azione);
+    if (azione === 'invia') invia();
+    if (azione === 'copia') copia();
+    if (azione === 'stampa') window.print();
   });
+
+  const stato = (msg) => { q('#stato-azione').textContent = msg; };
+  let inviando = false;
+  function invia() {
+    if (inviando) return;
+    dati = leggiForm();
+    const r = validaRichiesta(dati, catalogo, oggi());
+    const primoPasso = [1, 2, 3, 4, 5].find((n) => _CAMPI_PASSO[n].some((c) => r.errori[c]));
+    if (primoPasso) {
+      if (primoPasso !== passo) vaiA(primoPasso, false);
+      mostraErrori(r.errori, _CAMPI_PASSO[primoPasso]);
+      return;
+    }
+    inviando = true;
+    setTimeout(() => { inviando = false; }, 2000);
+    const apri = opzioni.apriMail || (typeof window.__rsApriMail === 'function' ? window.__rsApriMail : (u) => { window.location.href = u; });
+    apri(costruisciEmail(dati, r.garanzia, codice, catalogo).mailto);
+    stato(T.invioAvviato);
+  }
+  async function copia() {
+    dati = leggiForm();
+    const testo = costruisciEmail(dati, validaRichiesta(dati, catalogo, oggi()).garanzia, codice, catalogo).corpoCompleto;
+    try {
+      await navigator.clipboard.writeText(testo);
+      stato(T.copiato);
+    } catch (e) {
+      try {
+        const t = document.createElement('textarea');
+        t.value = testo; document.body.appendChild(t); t.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(t);
+        stato(ok ? T.copiato : T.copiaFallita);
+      } catch (e2) { stato(T.copiaFallita); }
+    }
+  }
 
   // stato iniziale
   scriviForm(dati);
