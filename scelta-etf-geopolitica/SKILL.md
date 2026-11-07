@@ -39,8 +39,8 @@ Prima di iniziare, dichiarare in una riga come si è interpretata la richiesta (
 6. Verificare i dati di ogni ETF (TER, patrimonio gestito, prezzo) sulle fonti del Protocollo Fonti. Il dato che pesa sulla scelta va confermato da una seconda fonte. Scrivere accanto a ogni numero la fonte e la data. Se il dato non si trova, scrivere "N/D" e non stimarlo.
 7. Decidere importi e tempi: tutto subito oppure a più tranche. Se a tranche, proporre quante e a che distanza.
 8. Controllare che gli importi sommino al rimborso e che nessun ETF violi un filtro (vedi Definizione di finito).
-9. Scrivere il report PDF. Nome del file: `scelta_etf_AAAA-MM-GG.pdf` (nome ipotizzato, da confermare). Usare lo stile e la struttura delle preferenze di Ettore.
-10. Consegnare il report e dire chiaramente cosa Ettore deve fare a mano: controllare su Banca Generali che ogni ETF sia acquistabile.
+9. Scrivere il report PDF nella cartella `report/` dentro questa skill (crearla se non esiste). Nome del file: `scelta_etf_AAAA-MM-GG.pdf`. Usare lo stile e la struttura delle preferenze di Ettore.
+10. Mandare il report a Ettore (canale da confermare: in conversazione, o per email) e dire chiaramente cosa deve fare a mano: controllare su Banca Generali che ogni ETF sia acquistabile.
 
 Struttura del report: sintesi in 1-2 frasi in apertura, poi analisi con i dati, poi l'azione proposta, poi confidenza, orizzonte e cosa farebbe rivedere la scelta. Per ogni ETF devono comparire: ISIN, TER, patrimonio gestito (AUM), scenario di riferimento e il segnale che farebbe rivedere la scelta. Il tono è diretto, tra esperti, frasi brevi, senza premesse di cortesia.
 
@@ -54,6 +54,8 @@ Struttura del report: sintesi in 1-2 frasi in apertura, poi analisi con i dati, 
 - Se investe in mercati emergenti, scartarlo.
 - Se è un fondo monetario, scartarlo.
 - Se è obbligazionario corporate, scartarlo.
+- Non esistono altri ETF esclusi in partenza: si scarta solo chi viola questi filtri (in particolare TER e dimensione).
+- La copertura valutaria non è richiesta: un ETF senza copertura va bene.
 
 **Scelta tra ETF che passano i filtri**
 - Se due ETF fanno lo stesso lavoro, scegliere quello con più patrimonio gestito, solo ad accumulazione, e a parità quello con il TER più basso.
@@ -82,7 +84,7 @@ Struttura del report: sintesi in 1-2 frasi in apertura, poi analisi con i dati, 
 
 Il lavoro è finito quando tutte queste cose sono vere (controlli proposti, da confermare con Ettore):
 
-- Il report PDF esiste ed è in italiano, con sintesi in apertura.
+- Il report PDF esiste in `report/`, è in italiano, con sintesi in apertura, ed è stato mandato a Ettore.
 - Ogni ETF ha ISIN, TER, patrimonio gestito, scenario di riferimento e segnale di revisione.
 - Ogni numero ha fonte e data. I dati che pesano sulla scelta hanno due fonti.
 - Nessun ETF viola un filtro: UCITS, accumulazione, TER fino a 0,5%, almeno 500 milioni, niente emergenti, niente monetari, niente corporate.
@@ -97,9 +99,9 @@ Una versione sbagliata è un report con un ETF dei mercati emergenti. Prima di c
 ## Casi limite
 
 - **ETF non acquistabile dal broker.** È già successo. Non posso verificarlo sulla piattaforma di Banca Generali. Proporre sempre una riserva per ogni ETF e dire a Ettore di controllare per ISIN prima di eseguire. Se ha allegato un elenco ETF del broker, usarlo come filtro.
-- **File delle scadenze mancante o incompleto.** Non stimare gli importi. Chiedere il file. Se il lavoro è senza supervisione, produrre il report con i campi vuoti marcati "N/D" e dirlo in apertura.
+- **File delle scadenze mancante o incompleto.** Non stimare gli importi. Chiedere il file. Se il lavoro è senza supervisione, produrre il report con i campi vuoti marcati "N/D", dirlo in apertura e mandarlo comunque a Ettore.
 - **Rimborso che cambia data o importo.** Rifare solo i passaggi 1, 7 e 8 e dire cosa è cambiato.
 - **Nessun ETF passa tutti i filtri per una scelta.** Non allentare i filtri da soli. Mostrare il migliore che li viola, dire quale filtro viola e lasciare decidere a Ettore.
 - **Scenari che si contraddicono o fatti poco chiari.** Dichiarare la confidenza bassa e preferire tranche e obbligazionario corto di Stato.
-- **ETF obbligazionario in dollari.** Segnalare il rischio di cambio e se l'ETF è coperto (ipotesi da confermare con Ettore: non è stata discussa).
+- **ETF in dollari o senza copertura valutaria.** Ettore lo accetta. Segnalare comunque nel report il rischio di cambio, senza scartare l'ETF.
 - **Tendenza a confermare la tesi di Ettore.** Se la richiesta contiene già una tesi ("sono sicuro che..."), sfidarla nel report con almeno 3 cose che la smentirebbero.
