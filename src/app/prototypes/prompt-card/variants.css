@@ -1,0 +1,107 @@
+/* Motion for the prompt-card prototype variants. Layout lives in Tailwind classes. */
+
+/* ---------- Shared: copy icon swap (Copy -> Check) ---------- */
+.pc-swap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.pc-swap > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 150ms ease-out;
+}
+.pc-swap > [data-icon="done"] { opacity: 0; transform: scale(0.6); filter: blur(2px); }
+.pc-swap[data-copied] > [data-icon="idle"] { opacity: 0; transform: scale(0.6); filter: blur(2px); }
+.pc-swap[data-copied] > [data-icon="done"] { opacity: 1; transform: scale(1); filter: blur(0); }
+
+.pc-press { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.pc-press:active { transform: scale(0.97); }
+
+/* ---------- Prompt-first ---------- */
+.pc-pf-body { transition: background-color 150ms ease-out; }
+.pc-pf-body:active .pc-pf-text { transform: scale(0.99); }
+.pc-pf-text { transform-origin: center; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+
+.pc-pf-hint {
+  transition:
+    opacity 150ms ease-out,
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pc-pf-body:hover { background-color: color-mix(in oklch, var(--muted) 60%, transparent); }
+  .pc-pf-hint { opacity: 0; transform: translateY(4px); }
+  .pc-pf-body:hover .pc-pf-hint,
+  .pc-pf-body:focus-visible .pc-pf-hint,
+  .pc-pf-hint[data-copied] { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Editorial ---------- */
+.pc-ed-title {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  transition: background-size 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+[dir="rtl"] .pc-ed-title { background-position: 100% 100%; }
+@media (hover: hover) and (pointer: fine) {
+  .pc-ed:hover .pc-ed-title { background-size: 100% 1px; }
+}
+.pc-ed-title:focus-visible { background-size: 100% 1px; }
+
+/* ---------- Compact ---------- */
+/* Lift the hovered card's masonry cell above its neighbours so the peek can overlap them. */
+.pc-compact-grid > div:has(.pc-co:hover),
+.pc-compact-grid > div:has(.pc-co:focus-within) { z-index: 20; }
+
+.pc-co-peek {
+  transform-origin: top center;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  visibility: hidden;
+  /* exit: quick, no delay */
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out,
+    visibility 0s linear 120ms;
+}
+.pc-co:focus-within .pc-co-peek {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    opacity 160ms ease-out,
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* enter: short intent delay so scanning the grid doesn't strobe */
+  .pc-co:hover .pc-co-peek {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    visibility: visible;
+    transition:
+      opacity 160ms ease-out 180ms,
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1) 180ms,
+      visibility 0s linear 180ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-swap > *,
+  .pc-press,
+  .pc-pf-text,
+  .pc-pf-hint,
+  .pc-ed-title { transition-duration: 0.01ms; }
+  .pc-press:active,
+  .pc-pf-body:active .pc-pf-text { transform: none; }
+  .pc-pf-hint { transform: none !important; }
+  .pc-swap > * { transform: none !important; filter: none !important; }
+  .pc-co-peek { transform: none !important; }
+}
